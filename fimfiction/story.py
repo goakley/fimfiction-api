@@ -313,6 +313,8 @@ class Stories():
 
         :return: A list of dictionary items (name, id, author)
         """
+        if limit <= 0:
+            return []
         url = urls.SEARCH
         opener = user.get_request_opener() if user is not None \
                  else urllib.request.build_opener()
@@ -333,6 +335,4 @@ class Stories():
                 'author': title.find('span', class_='author').get_text()
             })
         limit -= len(result)
-        if limit > 0:
-            result += self.search(opener, limit=limit, page=page+1)
-        return result
+        return result + self.search(opener, limit=limit, page=page+1)

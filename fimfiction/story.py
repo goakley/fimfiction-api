@@ -255,14 +255,14 @@ class Stories():
         """
         Sorts results by the given Order
         """
-        self.options['order'] = order
+        self.options['order'] = order.name
         return self
 
     def content_rating(self, rating):
         """
         Filters results to the given ContentRating
         """
-        self.options['content_rating'] = rating
+        self.options['content_rating'] = rating.value
         return self
 
     def completed(self):
@@ -298,6 +298,13 @@ class Stories():
         Allows stories with gore
         """
         self.options['gore'] = 1
+        return self
+
+    def category(self, category):
+        """
+        Allows stories in a specific category
+        """
+        self.options['category_' + category.name.lower()] = 1
         return self
 
     def execute(self, user=None, limit=20, page=1):

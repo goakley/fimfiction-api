@@ -6,23 +6,39 @@ The user module holds basic user information
 import http.cookiejar
 import urllib
 
-import urls
+import fimfiction.urls as urls
 
 
 class User():
     """
     A user of FimFiction.net
 
+    A user is someone who actively participates on the site, consuming the
+    content in some way (perhaps by also creating).  Note that this is
+    different from an author.  An author is an owner of stories, while a user
+    is someone who interacts with the site.  That is, a user and an author hold
+    a one-to-one relationship.
+
     User objects are most useful when authenticated, allowing for
     user-specific actions, such as querying favourite stories.
     """
+    @classmethod
+    def load(cls, username, password):
+        """
+        Loads a user from the site with the specified user name
+
+        Authentication is performed with the given password.  Authentication
+        is required; if you do not think you need authentication, you may wish
+        to use an Author object instead.
+        """
+        user = User(username)
+        user.authenticate(password)
+        return user
+
     def __init__(self, username):
-        """
-        Creates a user with the specified username
-        """
         self.username = username
-        self.cookie_jar = None
-        self.authenticated = False
+        self._cookie_jar = None
+        self._authenticated = False
 
     def get_request_opener(self):
         """
@@ -31,7 +47,7 @@ class User():
         Use this opener to make requests as the user, useful if the user is
         authenticated.
         """
-        cookie_processor = urllib.request.HTTPCookieProcessor(self.cookie_jar)
+        cookie_processor = urllib.request.HTTPCookieProcessor(self._cookie_jar)
         return urllib.request.build_opener(cookie_processor)
 
     def authenticate(self, password):
@@ -40,13 +56,13 @@ class User():
 
         :return: True if authentication was successful, False if not
         """
-        if self.authenticated:
-            return True
+        if self._authenticated:
+            return
 
         url = urls.LOGIN
 
-        if self.cookie_jar is None:
-            self.cookie_jar = http.cookiejar.CookieJar()
+        if self._cookie_jar is None:
+            self._cookie_jar = http.cookiejar.CookieJar()
 
         form_data = {"username": self.username,
                      "password": password,
@@ -57,7 +73,6 @@ class User():
         response = opener.open(url, form_data_encoded).read().decode('ascii')
 
         if response != "0":
-            return False
+            raise ValueError("Could not authenticate using supplied password")
 
-        self.authenticated = True
-        return True
+        self._authenticated = True

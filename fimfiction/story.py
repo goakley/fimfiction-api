@@ -3,21 +3,70 @@ The story module holds information related to the stories on the site
 """
 
 
+import datetime
 from enum import Enum
+import json
 import urllib
 import re
 import xml.etree.ElementTree as ET
+
 from bs4 import BeautifulSoup
 
-import urls
+from fimfiction.author import Author
+import fimfiction.urls as urls
+
+
+def utctime(timestamp):
+    return datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc)
 
 
 class Story():
     """
     Represents a story
     """
-    def __init__(self, identity):
-        self.identity = identity
+    @classmethod
+    def load(cls, story_id):
+        url = urls.API_STORY + str(story_id)
+        opener = urllib.request.build_opener()
+        response = opener.open(url, form_data_encoded)
+        result = json.load(response)['story']
+        result['chapters'] = [
+            cha.update(
+                {'date_modified': utctime(cha['date_modified'])}
+            ) for cha in result['chapters']
+        ]
+        result['chapters'] = [Chapter(**cha) for cha in result['chapters']]
+        result['status'] = cls.Status(result['status'])
+        result['categories'] = [
+            cls.Category(cat) for cat, ok in result['categories'] if ok
+        ]
+        result['date_modified'] = utctime(result['date_modified'])
+        result['content_rating'] = cls.ContentRating(result['content_rating'])
+        result['author'] = Author(result['author'])
+        return cls(**result)
+
+    def __init__(self, **kwargs):
+        self.id = kwargs['id']
+        self.title = kwargs['title']
+        self.short_description = kwargs['short_description']
+        self.description = kwargs['description']
+        self.chapters = kwargs['chapters']
+        self.words = kwargs['words']
+        self.date_modified = kwargs['date_modified']
+        self.url = kwargs['url']
+        self.image_url = kwargs['image']
+        self.full_image_url = kwargs['full_image']
+        self.views = kwargs['views']
+        self.total_views = kwargs['total_views']
+        self.likes = kwargs['likes']
+        self.dislikes = kwargs['dislikes']
+        self.author = kwargs['author']
+        # comments
+
+    class Status(Enum):
+        incomplete = "Incomplete"
+        complete = "Complete"
+        on_hiatus = "On Hiatus"
 
     class Format(Enum):
         """
@@ -26,6 +75,20 @@ class Story():
         txt = 1
         html = 2
         epub = 3
+
+    class Category(Enum):
+        random = "Random"
+        romance = "Romance"
+        alternate_universe = "Alternate Universe"
+        slice_of_life = "Slice of Life"
+        comedy = "Comedy"
+        crossover = "Crossover"
+        dark = "Dark"
+        tragedy = "Tragedy"
+        adventure = "Adventure"
+        human = "Human"
+        sad = "Sad"
+        anthro = "Anthro"
 
     def download(self, story_format=Format.txt):
         """
@@ -89,9 +152,13 @@ class Chapter():
 
     Note: Chapter identities are NOT the number of the chapter in a story.
     """
-    def __init__(self, identity):
-        self.identity = identity
-        self.is_read = None
+    def __init__(self, **kwargs):
+        self.id = kwargs['id']
+        self.title = kwargs['title']
+        self.link = kwargs['link']
+        self.words = kwargs['words']
+        self.views = kwargs['views']
+        self.date_modified = kwargs['date_modified']
 
     def mark_read(self, user):
         """
@@ -129,9 +196,9 @@ class Stories():
 
     This class's purpose is to fetch a set of stories based on some criteria.
     The methods of this class are designed to be chained together, terminated
-    with a call to `execute`.  Example:
+    with a call to `execute` (optionally) passing in a user.  Example:
 
-    Stories(000000).tracking().unread().order('updated').search(opener)
+    Stories().tracking().unread().order('updated').search(user)
 
     Certian attributes, such as `tracking`, will only work in a search using an
     authenticated User object.
@@ -233,14 +300,15 @@ class Stories():
         self.options['gore'] = 1
         return self
 
-    def execute(self, user, limit=20, page=1):
+    def execute(self, user=None, limit=20, page=1):
         """
         Executes a search based on the criteria specified
 
         :return: A list of dictionary items (name, id, author)
         """
         url = urls.SEARCH
-        opener = user.get_request_opener()
+        opener = user.get_request_opener() if user is not None \
+                 else urllib.request.build_opener()
         options = self.options.copy()
         options['page'] = page
         form_data = urllib.parse.urlencode(options)

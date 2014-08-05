@@ -7,9 +7,10 @@ class Author():
     """
     An author on FimFiction.net
 
-    An author is someone who writes for the site.  Note that this is different
-    from a user, who uses the site generically.  A user and an author have a
-    one-to-one relationship.
+    An author is and entity on the site that has some number of stories
+    associated with them.  Note that this is different from a user, who
+    from a user, who consumes and provides content on the site.  A user and an
+    author have a one-to-one relationship.
     """
     def __init__(self, **kwargs):
         self.id = kwargs['id']

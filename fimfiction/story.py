@@ -1,5 +1,8 @@
 """
 The story module holds information related to the stories on the site
+
+The most interesting class in this module is the `Stories` class, which allows
+for the searching of stories on the site.
 """
 
 
@@ -26,6 +29,11 @@ class Story():
     """
     @classmethod
     def load(cls, story_id):
+        """
+        Load a story object by its id number
+
+        :returns Story:
+        """
         url = urls.API_STORY + str(story_id)
         opener = urllib.request.build_opener()
         response = opener.open(url, form_data_encoded)
@@ -61,9 +69,12 @@ class Story():
         self.likes = kwargs['likes']
         self.dislikes = kwargs['dislikes']
         self.author = kwargs['author']
-        # comments
+        # TODO: comments
 
     class Status(Enum):
+        """
+        The development status of a story
+        """
         incomplete = "Incomplete"
         complete = "Complete"
         on_hiatus = "On Hiatus"
@@ -77,6 +88,9 @@ class Story():
         epub = 3
 
     class Category(Enum):
+        """
+        The category a story may reside in
+        """
         random = "Random"
         romance = "Romance"
         alternate_universe = "Alternate Universe"
@@ -92,9 +106,10 @@ class Story():
 
     def download(self, story_format=Format.txt):
         """
-        Provides the contents of the story in a certain format
+        Provide the contents of the story in a certain format
 
         :param Story.Format format: Which format to provide
+        :returns str: The resulting file contents as a string
         """
         if story_format == Story.Format.txt:
             url = urls.DOWNLOAD_TXT
@@ -112,6 +127,7 @@ class Story():
         Change the favourite status of this story for a use
 
         :param bool active: Whether this story should be a favourite
+        :returns bool: Whether the operation was successul
         """
         url = urls.FAVOURITE
         target_state = 1 if active else 0
@@ -131,6 +147,7 @@ class Story():
         Change the 'read later' status of this story for a user
 
         :param bool active: Whether this story should be a 'read later' story
+        :returns bool: Whether the operation was successful
         """
         url = urls.READLATER
         target_state = 1 if active else 0
@@ -163,18 +180,24 @@ class Chapter():
     def mark_read(self, user):
         """
         Marks this chapter as read by the user
+
+        :returns bool: Whether the operation was successful
         """
         return self._toggle_to_state(user.get_request_opener(), 1)
 
     def mark_unread(self, user):
         """
-        Marks this chapter as unread by the user stored in the opener
+        Marks this chapter as unread by the user
+
+        :returns bool: Whether the operation was successful
         """
         return self._toggle_to_state(user.get_request_opener(), 0)
 
     def _toggle_to_state(self, opener, state):
         """
-        Toggles the is_read flag until it reaches a state
+        Toggles the is_read flag until it reaches the given state
+
+        :returns bool: Whether the operation was successful
         """
         url = urls.READ
         form_data = {'chapter': self.identity}
@@ -195,13 +218,15 @@ class Stories():
     Acts as a way of fetching a set of stories
 
     This class's purpose is to fetch a set of stories based on some criteria.
-    The methods of this class are designed to be chained together, terminated
-    with a call to `execute` (optionally) passing in a user.  Example:
+    The methods of this class are designed to be chained/cascaded, except for
+    the call to `execute` (optionally).  Example:
 
     Stories().tracking().unread().order('updated').search(user)
 
-    Certian attributes, such as `tracking`, will only work in a search using an
-    authenticated User object.
+    `execute` accepts an option user parameter that will be used to perform
+    the query.  An authenticated `User` is required when applying certain
+    operations, such as `tracking`.  The result of performing such a query
+    without a `User` is undefined.
     """
     def __init__(self):
         self.options = {}
@@ -311,13 +336,18 @@ class Stories():
         """
         Executes a search based on the criteria specified
 
-        :return: A list of dictionary items (name, id, author)
+        :param User user: The (optional) user who will perform the query
+        :param int limit: The soft-limit of the number of results to provide
+                          (the number provided may be greater, but will not be
+                          lesser)
+        :return list<dict>: A list of dictionary items (id, name, author_name),
+                            with one entry corresponding to once story
         """
         if limit <= 0:
             return []
         url = urls.SEARCH
         opener = user.get_request_opener() if user is not None \
-                 else urllib.request.build_opener()
+            else urllib.request.build_opener()
         options = self.options.copy()
         options['page'] = page
         form_data = urllib.parse.urlencode(options)
@@ -332,7 +362,7 @@ class Stories():
             result.append({
                 'name': title.find('a', class_='story_name').get_text(),
                 'id': int(re.search('/story/(.+?)/', id_str).group(1)),
-                'author': title.find('span', class_='author').get_text()
+                'author_name': title.find('span', class_='author').get_text()
             })
         limit -= len(result)
         return result + self.search(opener, limit=limit, page=page+1)

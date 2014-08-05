@@ -27,9 +27,9 @@ class User():
         """
         Loads a user from the site with the specified user name
 
-        Authentication is performed with the given password.  Authentication
-        is required; if you do not think you need authentication, you may wish
-        to use an Author object instead.
+        Username and password are required for authentication.  If you do not
+        think you need authentication, you may be looking to use an Author
+        object instead.
         """
         user = User(username)
         user.authenticate(password)

@@ -19,7 +19,7 @@ from fimfiction.author import Author
 import fimfiction.urls as urls
 
 
-def utctime(timestamp):
+def _utctime(timestamp):
     return datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc)
 
 
@@ -40,7 +40,7 @@ class Story():
         result = json.load(response)['story']
         result['chapters'] = [
             cha.update(
-                {'date_modified': utctime(cha['date_modified'])}
+                {'date_modified': _utctime(cha['date_modified'])}
             ) for cha in result['chapters']
         ]
         result['chapters'] = [Chapter(**cha) for cha in result['chapters']]
@@ -48,7 +48,7 @@ class Story():
         result['categories'] = [
             cls.Category(cat) for cat, ok in result['categories'] if ok
         ]
-        result['date_modified'] = utctime(result['date_modified'])
+        result['date_modified'] = _utctime(result['date_modified'])
         result['content_rating'] = cls.ContentRating(result['content_rating'])
         result['author'] = Author(result['author'])
         return cls(**result)
@@ -241,7 +241,7 @@ class Stories():
 
     class Order(Enum):
         """
-        The format of a rendered/downloaded story
+        The order by which to sort results
         """
         latest = "latest"
         hot = "hot"

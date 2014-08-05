@@ -54,7 +54,8 @@ class User():
         """
         Authenticates the user using the given password
 
-        :return: True if authentication was successful, False if not
+        :returns bool: True if authentication was successful, False if not
+        :raises ValueError: If unable to authenticate with the given password
         """
         if self._authenticated:
             return

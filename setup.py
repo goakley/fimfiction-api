@@ -11,7 +11,7 @@ setup(
     license='LICENSE.txt',
     description='API to access FimFiction.net from a Reader\'s perspective',
     long_description=open('README.rst').read(),
-    install_requires=[
-        'beautifulsoup4 >= 4.0.0'
+    requires=[
+        'beautifulsoup4 (>=4.0.0)'
     ],
 )

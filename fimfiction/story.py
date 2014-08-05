@@ -33,24 +33,25 @@ class Story():
         Load a story object by its id number
 
         :returns Story:
+        :raises ValueError: If an invalid story_id was passed
         """
         url = urls.API_STORY + str(story_id)
         opener = urllib.request.build_opener()
-        response = opener.open(url, form_data_encoded)
-        result = json.load(response)['story']
-        result['chapters'] = [
-            cha.update(
-                {'date_modified': _utctime(cha['date_modified'])}
-            ) for cha in result['chapters']
-        ]
+        response = opener.open(url)
+        result = json.loads(response.read().decode('utf-8'))
+        if 'error' in result:
+            raise ValueError('Error - {}'.format(result['error']))
+        result = result['story']
+        for cha in result['chapters']:
+            cha['date_modified'] = _utctime(cha['date_modified'])
         result['chapters'] = [Chapter(**cha) for cha in result['chapters']]
         result['status'] = cls.Status(result['status'])
         result['categories'] = [
-            cls.Category(cat) for cat, ok in result['categories'] if ok
+            cls.Category(cat) for cat, ok in result['categories'].items() if ok
         ]
         result['date_modified'] = _utctime(result['date_modified'])
         result['content_rating'] = cls.ContentRating(result['content_rating'])
-        result['author'] = Author(result['author'])
+        result['author'] = Author(**result['author'])
         return cls(**result)
 
     def __init__(self, **kwargs):
@@ -104,6 +105,14 @@ class Story():
         sad = "Sad"
         anthro = "Anthro"
 
+    class ContentRating(Enum):
+        """
+        The content / subject matter rating of a story
+        """
+        everyone = 0
+        teen = 1
+        mature = 2
+
     def download(self, story_format=Format.txt):
         """
         Provide the contents of the story in a certain format
@@ -117,7 +126,7 @@ class Story():
             url = urls.DOWNLOAD_HTML
         elif story_format == Story.Format.epub:
             url = urls.DOWNLOAD_EPUB
-        url += str(self.identity)
+        url += str(self.id)
         opener = urllib.request.build_opener()
         response = opener.open(url).read().decode('utf-8')
         return response
@@ -132,7 +141,7 @@ class Story():
         url = urls.FAVOURITE
         target_state = 1 if active else 0
         opener = user.get_request_opener()
-        form_data = {'story': self.identity, 'selected': str(target_state)}
+        form_data = {'story': self.id, 'selected': str(target_state)}
         form_data_encoded = urllib.parse.urlencode(form_data).encode('ascii')
         response = opener.open(url, form_data_encoded).read().decode('ascii')
 
@@ -152,7 +161,7 @@ class Story():
         url = urls.READLATER
         target_state = 1 if active else 0
         opener = user.get_request_opener()
-        form_data = {'story': self.identity, 'selected': str(target_state)}
+        form_data = {'story': self.id, 'selected': str(target_state)}
         form_data_encoded = urllib.parse.urlencode(form_data).encode('ascii')
         response = opener.open(url, form_data_encoded).read().decode('ascii')
 
@@ -200,7 +209,7 @@ class Chapter():
         :returns bool: Whether the operation was successful
         """
         url = urls.READ
-        form_data = {'chapter': self.identity}
+        form_data = {'chapter': self.id}
         form_data_encoded = urllib.parse.urlencode(form_data).encode('ascii')
         response = opener.open(url, form_data_encoded).read().decode('ascii')
 
@@ -230,14 +239,6 @@ class Stories():
     """
     def __init__(self):
         self.options = {}
-
-    class ContentRating(Enum):
-        """
-        The content / subject matter rating of a story
-        """
-        everyone = 3
-        teen = 1
-        mature = 2
 
     class Order(Enum):
         """
@@ -332,7 +333,7 @@ class Stories():
         self.options['category_' + category.name.lower()] = 1
         return self
 
-    def execute(self, user=None, limit=20, page=1):
+    def execute(self, user=None, limit=10, page=1):
         """
         Executes a search based on the criteria specified
 
@@ -341,7 +342,7 @@ class Stories():
                           (the number provided may be greater, but will not be
                           lesser)
         :return list<dict>: A list of dictionary items (id, name, author_name),
-                            with one entry corresponding to once story
+                            with one entry corresponding to one story
         """
         if limit <= 0:
             return []
@@ -365,4 +366,4 @@ class Stories():
                 'author_name': title.find('span', class_='author').get_text()
             })
         limit -= len(result)
-        return result + self.search(opener, limit=limit, page=page+1)
+        return result + self.execute(opener, limit=limit, page=page+1)

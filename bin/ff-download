@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+import argparse
+import os.path
+
+from fimfiction.user import User
+from fimfiction.story import Stories, Story
+
+parser = argparse.ArgumentParser(
+    description='Download a user\'s unread, tracked stories'
+)
+parser.add_argument('--username', '-u', required=True)
+parser.add_argument('--password', '-p', required=True)
+parser.add_argument('--completed', '-c', action='store_true',
+                    help='Only process completed stores')
+parser.add_argument('--format', '-f', default='txt',
+                    choices=Story.Format.__members__.keys(),
+                    help='The file format to output the stories in')
+parser.add_argument('--output', '-o', default='.',
+                    help='Output the downloads to this directory')
+parser.add_argument('--dry-run', '-d', action='store_true',
+                    help='Report the eligible stories (not downloading them)')
+args = parser.parse_args()
+
+try:
+    user = User.load(args.username, args.password)
+except ValueError:
+    print('Could not authenticate with the given username and password')
+    exit(1)
+stories = Stories().tracking().unread()
+if args.completed:
+    stories.completed()
+data = stories.execute(user)
+for story_data in data:
+    identifier = "{author_name} - {name}".format(**story_data)
+    print(identifier)
+    if args.dry_run:
+        continue
+    story = Story.load(story_data['id'])
+    contents = story.download(Story.Format[args.format])
+    filename = os.path.join(os.path.realpath(args.output),
+                            identifier + '.' + args.format)
+    with open(filename, 'w') as output:
+        output.write(contents)

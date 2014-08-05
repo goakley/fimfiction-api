@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from distutils.core import setup
 
 setup(
@@ -6,7 +8,7 @@ setup(
     author='',
     author_email='',
     packages=['fimfiction'],
-    scripts=[],
+    scripts=['bin/ff-download'],
     url='https://github.com/alanjcastonguay/fimfiction-api',
     license='LICENSE.txt',
     description='API to access FimFiction.net from a Reader\'s perspective',
